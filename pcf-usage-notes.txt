@@ -1,0 +1,182 @@
+## Push a sample application to pez
+
+# Login to PeZ and create an account:
+
+   https://pez.pezapp.io/
+
+# Grab a working cf binary for your platform (this assumes osx):
+
+   $ curl -L "https://cli.run.pivotal.io/stable?release=macosx64-binary&source=github" | tar -zx
+   $ mv cf /usr/local/bin/
+ 
+ # Take a look at cf help options
+
+  $ cf help | less -r
+
+# Login to Pez
+
+  $ cf api https://api.run.pez.pivotal.io
+  $ cf login -sso
+
+# Once logged in, you can view your target like this:
+
+  $ cf target
+
+# List your organization
+
+  $ cf orgs
+
+# List current users
+
+  $ cf org-users pivot-<username>
+
+# Download a sample application
+
+  $ git clone https://github.com/cloudfoundry-samples/spring-music
+  $ cd spring-music
+
+# Compile and Package your project
+
+   $ ./gradlew assemble
+   
+# Push the application to CF running in Pez
+
+   $ cf push
+   
+# Get the URL of your app
+
+   $ cf apps
+   
+# Go to the URL and view your app running.
+# You can also generate some logs from the cmdline:
+# curl http://$(cf apps|grep ^spring|awk '{print $NF}')
+
+# Check the application logs
+
+   $ cf logs --recent spring-music
+
+# List available service plugins
+
+  $ cf marketplace
+
+# In a browser click on the info button (top right) you will see it uses an
+# in-memory database (profiles: cloud,in-memory).
+# Change to SQL backend.
+
+
+# Deploy a mysql backend, the service: p-mysql profile: 100mb-dev instance: music-db
+
+  $ cf create-service p-mysql 100mb-dev music-db
+  $ cf bind-service spring-music music-db
+
+# Restart the service
+
+  $ cf restart spring-music
+
+# Verify it's properly bound
+
+  $ cf services
+
+# Scale the app to two instances
+
+  $ cf scale spring-music -i 2
+
+# Verify the scale is working
+
+  $ cf app spring-music
+
+# Decrease Memory usage for each instance
+
+  $ cf scale spring-music -m 500M
+
+# Decrease Disk usage for each instance
+
+  $ cf scale spring-music -k 512M
+
+# Log back into PeZ and poke around on the dashboard and review your changes.
+
+  https://apps.run.pez.pivotal.io/
+
+## Using Spaces
+
+# List your organizations spaces
+
+  $ cf spaces
+
+# Create a new space called 'labtest'
+
+  $ cf space-create labtest
+
+# Target the labtest space
+
+  $ cf target -o "pivot-<username>" -s "labtest"
+
+# Push to labtest
+
+  $ cf push
+
+## Push your own application
+
+  $ mkdir app-php
+  $ cd app-php/
+  
+# Create a simple index file
+
+   $ vim index.php
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8">
+      <title>Hello World v1</title>
+   </head>
+   <body>
+      Hello world<?php echo " Version: v1"; ?>
+   </body>
+</html>
+
+# Push the php app
+
+  $ cf push "app-php"
+
+# View the app in a browser
+
+  $ cf app app-php|grep ^url
+
+# Create an application deployment manifest
+
+  $ cf create-app-manifest app-php -p manifest.yml
+
+## Blue Green deploy (live migrate from v1 to v2)
+
+# Scale v1 of the app to 3 instances
+
+  $ cf scale app-php -i 3
+
+# Create a second version of the app (v1 and v2)
+
+  $ rsync -aP app-php/ app-php-a/
+
+# Increment the new app version to v2 
+
+  $ perl -pi -e 's/v1/v2/g' app-php-a/index.php
+  $ perl -pi -e 's/app-php/app-php-a/g' app-php-a/manifest.yml
+  $ cd app-php-a
+  $ cf push
+
+# Create a new route in v2 of the app, which points to v1 of the app
+
+  $ cf map-route app-php-a cfapps.pez.pivotal.io -n app-php
+
+# Request the URL a bunch of times and note that you get a mix of v1/v2
+
+  $ for i in {1..20}; do curl -s http://app-php.cfapps.pez.pivotal.io/; done|grep Version
+
+# Now that we're happy with v2, unmap the route for v1
+
+  $ cf unmap-route app-php cfapps.pez.pivotal.io -n app-php
+
+# Re-request the original URL to see only app v2 running.
+
+  $ for i in {1..20}; do curl -s http://app-php.cfapps.pez.pivotal.io/; done|grep Version
+
+
