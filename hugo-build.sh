@@ -41,8 +41,7 @@ EOF
    cf push
 }
 
-# Make sure we got some sane looking command line options.
-
+# Check for hugo
 which -s hugo &> /dev/null
 if [ $? != '0' ]; then
   echo ""
@@ -50,6 +49,7 @@ if [ $? != '0' ]; then
   exit 255
 fi
 
+# Make sure we got some sane looking command line options.
 action=$1
 if [ "$action" = 'deploy' ]; then
   echo "Deploying hugo: $app"
