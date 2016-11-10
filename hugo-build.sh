@@ -13,18 +13,20 @@ function cf_push_hugo() {
    hugo new site $app
    cd $app
    git clone https://github.com/fredrikloch/hugo-uno.git themes/hugo-uno/
-   hugo new post/version-1.md
+   #hugo new post/version-1.md
+
    echo 'theme = "hugo-uno"' >> config.toml
    echo 'basedirectory = "/"' >> config.toml
    perl -pi -e 's/baseurl.*?$//' config.toml
    perl -pi -e 's/title.*?$/title = "Congratulations"/' config.toml
    hugo -Ds '' -t hugo-uno
+
    perl -pi -e 's/This site.*?$/CF Successfully Deployed <\/p>/' \
      public/categories/index.html \
      public/index.html \
-     public/post/version-1/index.html \
      public/tags/index.html \
      themes/hugo-uno/layouts/partials/sidebar.html
+     #public/post/version-1/index.html \
 
    # Generate an application manifest for my sample app.
    cat << EOF > manifest.yml
